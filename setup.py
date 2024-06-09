@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import setuptools
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -123,16 +124,21 @@ class CMakeBuild(build_ext):
         )
 
 
-# The information here can also be placed in setup.cfg - better separation of
-# logic and declaration, and simpler if you include description/version in a file.
+
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name="heatflow",
     version="0.0.1",
     author="Satyam Mishra",
-    author_email="dean0x7d@gmail.com",
-    description="A test project using pybind11 and CMake",
-    long_description="",
-    ext_modules=[CMakeExtension("heatflow")],
+    author_email="tubex998@gmail.com",
+    description="HeatFlow is a python framework to work with neural networks, tensor, etc.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    package_dir={"": "heatflow"},
+    packages=setuptools.find_packages(where=""),
+    ext_modules=[CMakeExtension("heatflow_cpp")],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
     extras_require={"test": ["pytest>=6.0"]},
