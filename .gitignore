@@ -29,6 +29,7 @@ MANIFEST
 
 build/
 eigen-3.4.0/
+eigen/
 pybind11
 
 # PyInstaller
