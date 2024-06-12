@@ -1,5 +1,6 @@
 import numpy as np
 from numba import jit
+from functools import wraps
 
 @jit(nopython=True)
 def process_data(data):
@@ -30,6 +31,19 @@ def process_data(data):
     else:
         raise TypeError(f"Expected data of types {supported_types} instead got {type(data)}")
     return data
+
+def registerFn(cls, fn_name):
+    """Decorator to add function dynamically to a class"""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        
+        setattr(cls, fn_name, wrapper)
+        return func
+    
+    return decorator
 
 def flatten_nd_array_to_2d_list(array):
     """

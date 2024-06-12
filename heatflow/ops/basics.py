@@ -1,140 +1,235 @@
+import heatflow._tensor
 import numpy as np
 import heatflow
-from numba import njit
+from typing import Tuple
 from heatflow_cpp import matmul_cpp, add_cpp, subtract_cpp, divide_cpp
-from utils import flatten_nd_array_to_2d_list, reconstruct_nd_array_from_2d_list
+from utils import flatten_nd_array_to_2d_list, reconstruct_nd_array_from_2d_list, registerFn
 
-def mul(array1, array2):
+# Support broadcasting issue in backwards
+def manageBroadcasting(
+    input_ndim: int, input_shape: Tuple[int], local_gradient: np.ndarray
+) -> np.ndarray:
+    """Handles broadcasting issue when computing gradients when the output gradient is broadcasted to the inputs.
+
+    Parameters
+    ----------
+    Arg: input_ndim
+        Rank of the tensor for which the gradient is being computed
+
+    Arg: input_shape
+        Shape of the tensor for gradient calculation
+
+    Arg: local_gradient
+        Gradient that is propogated from the output tensor.
+
+    """
+
+    # Given the gradient of the output is scalar there is no need for broadcasting
+    if type(local_gradient) in [np.float32, float] or input_ndim > local_gradient.ndim:
+        return local_gradient
+
+    drop_dim: int = local_gradient.ndim - input_ndim
+    for _ in range(drop_dim):
+        local_gradient = local_gradient.sum(axis=0)
+
+    # What is happening?
+    # As we have already normalized the rank, we just sum over the dim while retaining dim
+    # (2,3) + (1,3) => (2,3) :
+    # (1,3) is broadcasted, so essentially we just have to sum over the _gradient along the dim which is equal to that of the child.
+
+    for i, dim in enumerate(input_shape):
+        if dim == 1:
+            local_gradient = local_gradient.sum(axis=i, keepdims=True)
+
+    return local_gradient
+
+
+@registerFn(heatflow.Tensor, "__mul__")
+def mul(a, b):
     """
     Dot product two multiply two matrix
     """
-    if isinstance(array1, heatflow.Tensor):
-        array1 = array1.data
-    
-    if isinstance(array2, heatflow.Tensor):
-        array2 = array2.data
+    a = heatflow.toTensor(a)
+    b = heatflow.toTensor(b)
+    output = heatflow.Tensor(np.multiply(a.data, b.data), requires_grad=(a.requires_grad or b.requires_grad))
+    output.save_for_backward([a, b])
 
-    return heatflow.Tensor(np.multiply(array1, array2))
-
-def matmul(array1, array2):
-    """
-    Multiplies two n-dimensional numpy arrays using Eigen's matrix multiplication.
-    """
-    if isinstance(array1, heatflow.Tensor):
-        array1 = array1.data
-    
-    if isinstance(array2, heatflow.Tensor):
-        array2 = array2.data
-
-    if array1.shape != array2.shape:
-        raise ValueError("The two arrays must have the same shape.")
-    
-
-    # Flatten the n-dimensional arrays to lists of 2D arrays
-    if array1.ndim > 2:
-        if array1.shape[-1] != array2.shape[-2]:
-            raise ValueError(f"The tensor with shape {array1.shape} can not be multiplied with tensor with shape {array2.shape}")
+    def grad_fn():
+        if a.requires_grad:
+            a_local_gradient = np.multiply(output.grad.data, b.data)
+            a_local_gradient = manageBroadcasting(a.ndim, a.shape, a_local_gradient)
+            a.grad.data += a_local_gradient
         
-        list1 = flatten_nd_array_to_2d_list(array1)
-        list2 = flatten_nd_array_to_2d_list(array2)
-
-        # Multiply the 2D matrices using the C++ function
-        result_list = [matmul_cpp(np.matrix(mat1), np.matrix(mat2)) for mat1, mat2 in zip(list1, list2)]
-
-        # Convert the result list back to a numpy array and reconstruct the n-dimensional array
-        result_array = reconstruct_nd_array_from_2d_list(result_list, array1.shape)
-        return heatflow.Tensor(result_array)
-    if array1.ndim == 1:
-        return heatflow.Tensor(sum(a * b for a, b in zip(array1, array2)))
-    else:
-        return heatflow.Tensor(matmul_cpp(array1, array2))
+        if b.requires_grad:
+            b_local_gradient = np.multiply(output.grad.data, a.data)
+            b_local_gradient = manageBroadcasting(b.ndim, b.shape, b_local_gradient)
+            b.grad.data += b_local_gradient
     
-def add(array1, array2):
+    output.grad_fn = grad_fn
+
+    return output
+
+@registerFn(heatflow.Tensor, "__matmul__")
+def matmul(a, b):
+    """Return result of matrix multiplication of the inputs"""
+
+    a = heatflow.toTensor(a)
+    b = heatflow.toTensor(b)
+
+    if a.ndim == 0 or b.ndim == 0:
+        raise RuntimeError(
+            f"Inputs dimensions to matmul needs to be atleast 1D-Tensor."
+        )
+
+    try:
+        data = a.data @ b.data
+    except ValueError:
+        raise TypeError(
+            f"Inconsistent tensor size for the operation. {a.shape} x {b.shape} != (m,n) x (n,k)"
+        )
+
+    output = heatflow.Tensor(data=data, requires_grad=(a.requires_grad or b.requires_grad))
+    output.save_for_backward([a, b])
+
+    def grad_fn():
+
+        if a.requires_grad:
+
+            a_local_gradient = np.dot(output.grad.data, b.data.T)
+            a_local_gradient = manageBroadcasting(a.ndim, a.shape, a_local_gradient)
+
+            a.grad.data += a_local_gradient.reshape(a.grad.shape)
+
+        if b.requires_grad:
+
+            b_local_gradient = np.dot(a.data.T, output.grad.data)
+            b_local_gradient = manageBroadcasting(b.ndim, b.shape, b_local_gradient)
+
+            b.grad.data += b_local_gradient.reshape(b.grad.shape)
+
+    output.grad_fn = grad_fn
+
+    return output
+
+@registerFn(heatflow.Tensor, "__add__")    
+def add(a, b):
     """
-    Adds two n-dimensional numpy arrays using Eigen's matrix multiplication.
+    Adds two n-dimensional numpy arrays using Eigen's matrix addition.
     """
+    a = heatflow.toTensor(a)
+    b = heatflow.toTensor(b)
 
-    if isinstance(array1, heatflow.Tensor):
-        array1 = array1.data
-    
-    if isinstance(array2, heatflow.Tensor):
-        array2 = array2.data
-        
-    if array1.shape != array2.shape:
-        raise ValueError("The two arrays must have the same shape.")
-    
-    # Flatten the n-dimensional arrays to lists of 2D arrays
-    if array1.ndim > 2:
-        list1 = flatten_nd_array_to_2d_list(array1)
-        list2 = flatten_nd_array_to_2d_list(array2)
+    output = heatflow.Tensor(a.data + b.data, requires_grad=(a.requires_grad or b.requires_grad))
+    output.save_for_backward([a, b])
 
-        # Multiply the 2D matrices using the C++ function
-        result_list = [add_cpp(np.matrix(mat1), np.matrix(mat2)) for mat1, mat2 in zip(list1, list2)]
+    def grad_fn():
 
-        # Convert the result list back to a numpy array and reconstruct the n-dimensional array
-        result_array = reconstruct_nd_array_from_2d_list(result_list, array1.shape)
-        return heatflow.Tensor(result_array)
-    elif array1.ndim == 1:
-        return heatflow.Tensor(array1 + array2)
-    else:
-        return heatflow.Tensor(add_cpp(array1, array2))
+        if a.requires_grad:
 
-def subtract(array1, array2):
+            a_local_gradient = output.grad.data * np.ones_like(a.data)
+            a_local_gradient = manageBroadcasting(a.ndim, a.shape, a_local_gradient)
+
+            a.grad.data += a_local_gradient
+
+        if b.requires_grad:
+
+            b_local_gradient = output.grad.data * np.ones_like(b.data)
+            b_local_gradient = manageBroadcasting(b.ndim, b.shape, b_local_gradient)
+
+            b.grad.data += b_local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+@registerFn(heatflow.Tensor, "__sub__")
+def subtract(a, b):
     """
     Subtracts two n-dimensional numpy arrays using Eigen's matrix multiplication.
     """
 
-    if isinstance(array1, heatflow.Tensor):
-        array1 = array1.data
-    
-    if isinstance(array2, heatflow.Tensor):
-        array2 = array2.data
-        
-    if array1.shape != array2.shape:
-        raise ValueError("The two arrays must have the same shape.")
-    
-    # Flatten the n-dimensional arrays to lists of 2D arrays
-    if array1.ndim > 2:
-        list1 = flatten_nd_array_to_2d_list(array1)
-        list2 = flatten_nd_array_to_2d_list(array2)
+    a = heatflow.toTensor(a)
+    b = heatflow.toTensor(b)
 
-        # Multiply the 2D matrices using the C++ function
-        result_list = [subtract_cpp(np.matrix(mat1), np.matrix(mat2)) for mat1, mat2 in zip(list1, list2)]
+    output = heatflow.Tensor(a.data - b.data, requires_grad=(a.requires_grad or b.requires_grad))
+    output.save_for_backward([a, b])
 
-        # Convert the result list back to a numpy array and reconstruct the n-dimensional array
-        result_array = reconstruct_nd_array_from_2d_list(result_list, array1.shape)
-        return heatflow.Tensor(result_array)
-    elif array1.ndim == 1:
-        return heatflow.Tensor(array1 - array2)
-    else:
-        return heatflow.Tensor(subtract_cpp(array1, array2))
-    
-def divide(array1, array2):
+    def grad_fn():
+
+        if a.requires_grad:
+
+            a_local_gradient = output.grad.data * np.ones_like(a.data)
+            a_local_gradient = manageBroadcasting(a.ndim, a.shape, a_local_gradient)
+
+            a.grad.data += a_local_gradient
+
+        if b.requires_grad:
+
+            b_local_gradient = output.grad.data * -1.0 * np.ones_like(b.data)
+            b_local_gradient = manageBroadcasting(b.ndim, b.shape, b_local_gradient)
+
+            b.grad.data += b_local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+@registerFn(heatflow.Tensor, "__truediv__")    
+def divide(a, b):
     """
     Divides two n-dimensional numpy arrays using Eigen's matrix multiplication.
     """
 
-    if isinstance(array1, heatflow.Tensor):
-        array1 = array1.data
+    a = heatflow.toTensor(a)
+    b = heatflow.toTensor(b)
     
-    if isinstance(array2, heatflow.Tensor):
-        array2 = array2.data
-        
-    if array1.shape != array2.shape:
-        raise ValueError("The two arrays must have the same shape.")
-    
-    # Flatten the n-dimensional arrays to lists of 2D arrays
-    if array1.ndim > 2:
-        list1 = flatten_nd_array_to_2d_list(array1)
-        list2 = flatten_nd_array_to_2d_list(array2)
+    inv_b = b ** -1
 
-        # Multiply the 2D matrices using the C++ function
-        result_list = [divide_cpp(np.matrix(mat1), np.matrix(mat2)) for mat1, mat2 in zip(list1, list2)]
+    output = heatflow.Tensor(
+        a.data * inv_b.data, requires_grad=(a.requires_grad or inv_b.requires_grad)
+    )
+    output.save_for_backward([a, b, inv_b])
 
-        # Convert the result list back to a numpy array and reconstruct the n-dimensional array
-        result_array = reconstruct_nd_array_from_2d_list(result_list, array1.shape)
-        return heatflow.Tensor(result_array)
-    elif array1.ndim == 1:
-        return heatflow.Tensor(array1 / array2)
-    else:
-        return heatflow.Tensor(divide_cpp(array1, array2))
+
+    def grad_fn():
+
+        if a.requires_grad:
+
+            a_local_gradient = output.grad.data * inv_b.data
+            a_local_gradient = manageBroadcasting(a.ndim, a.shape, a_local_gradient)
+
+            a.grad.data += a_local_gradient
+
+        if inv_b.requires_grad:
+
+            inv_b_local_gradient = output.grad.data * a.data
+            b_local_gradient = -inv_b_local_gradient * (inv_b.data **2)
+            b_local_gradient = manageBroadcasting(
+                b.ndim, b.shape, b_local_gradient
+            )
+
+            b.grad.data += b_local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+@registerFn(heatflow.Tensor, "__pow__")
+def pow(a, pow):
+
+    a = heatflow.toTensor(a)
+
+    output = heatflow.Tensor(a.data ** (pow), requires_grad=a.requires_grad)
+    output.save_for_backward([a])
+
+    def backward_fn():
+
+        if a.requires_grad:
+            operation_gradient = pow * (a.data ** (pow - 1))
+            local_gradient = output.grad.data * operation_gradient
+            local_gradient = manageBroadcasting(a.ndim, a.shape, local_gradient)
+
+            a.grad.data += local_gradient
+
+    output.backward_fn = backward_fn
+    return output

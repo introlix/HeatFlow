@@ -1,5 +1,5 @@
 import numpy as np
-from ops.basics import matmul, add, subtract, divide
+# from ops.basics import add, subtract, divide
 from utils import process_data
 
 class Tensor:
@@ -21,40 +21,73 @@ class Tensor:
 
         self.data = np.array(data, dtype=np.float32)
         self.requires_grad = requires_grad
-        self.grad = None
+        self.grad = Tensor(np.zeros_like(self.data)) if requires_grad == True else None
+        self.grad_fn = lambda: None
+        self.ctx = []
 
-        if requires_grad:
-            self.zero_grad()
+    def save_for_backward(self, inputs) -> None:
+        """Stores the tensors used to compute `self`"""
+        self.ctx += inputs
+
+    def init_gradient(self, gradient):
+        """Init the gradient of this tensor"""
+        
+        if self.data.size != 1 and gradient == 1.0:
+            if gradient is None:
+                raise ValueError(
+                    "Default backward function can only be computed for scalar values. Pass `gradient` for vector outputs"
+                )
+            
+        self.grad = toTensor(gradient)
+
+    def generate_computational_graph(self):
+        """Performs topological sorting on the operations"""
+
+        gradient_tape = list()
+        visited = set()
+
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v.ctx:
+                    build_topo(child)
+                gradient_tape.append(v)
+
+        build_topo(self)
+        return gradient_tape
+    
+    def backward(self, gradient = 1.0):
+        """Traverses through the computational graph to compute gradients
+
+        Arg:
+            gradient (Tensor): Gradient of the output tensor w.r.t to itself
+
+        """
+
+        if self.requires_grad is False:
+            raise ValueError("Tensor does not require grad. To compute gradients enable requires_grad")
+        
+        self.init_gradient(gradient)
+        gradient_tape = self.generate_computational_graph()
+
+        for v in reversed(gradient_tape):
+            v.grad_fn()
     
     def zero_grad(self):
-        self.grad = np.zeros_like(self.data, dtype=np.float32)
+        if self.requires_grad is False:
+            raise ValueError("Tensor does not require grad. To compute gradients enable requires_grad")
+        
+        self.grad = Tensor(np.zeros_like(self.data))
     
     def set_grad_fn(self, grad_fn):
         self.grad_fn = grad_fn if self.requires_grad else None
+    
+    def ones_like(x):
+        if isinstance(x, Tensor):
+            return Tensor(np.ones_like(x.data))
 
-    def __add__(self, other):
-        if isinstance(other, Tensor):
-            return add(self.data, other.data)
-        else:
-            return add(self.data, other)
-
-    def __sub__(self, other):
-        if isinstance(other, Tensor):
-            return subtract(self.data, other.data)
-        else:
-            return subtract(self.data, other)
-
-    def __matmul__(self, other):
-        if isinstance(other, Tensor):
-            return matmul(self.data, other.data)
-        else:
-            return matmul(self.data, other)
-        
-    def __truediv__(self, other):
-        if isinstance(other, Tensor):
-            return divide(self.data, other.data)
-        else:
-            return divide(self.data, other)
+        x = toTensor(x)
+        return Tensor(np.ones_like(x))
         
     def reshape(self, *newshape):
         """
@@ -109,12 +142,33 @@ class Tensor:
             TypeError: If data is not instance of (int or float or list or np.ndarray)
         '''
         self._data = process_data(data)
-        
+
+    @property    
     def shape(self):
         return self.data.shape
+    
+    @property
+    def ndim(self):
+        return self.data.ndim
+    
+
+    def tolist(self):
+        """Returns tensor as a list"""
+        return self.data.tolist()
+    
         
     def __repr__(self):
         return f'Tensor({self.grad}, requires_grad={self.requires_grad})'
     
     def __str__(self):
-        return f'Tensor({self.data}, requires_grad={self.requires_grad}, shape={self.shape()})\n'
+        return f'Tensor({self.data}, requires_grad={self.requires_grad}, shape={self.shape})\n'
+    
+
+def toTensor(_input):
+        """
+        Converts teh input into tensor.
+        """
+        if isinstance(_input, Tensor) is True:
+            return _input
+        else:
+            return Tensor(_input)

@@ -1,9 +1,6 @@
 import inspect
 from abc import ABC, abstractmethod
 from typing import Dict
-import numpy as np
-import heatflow
-
 from heatflow import Tensor
 
 class Module(ABC):
@@ -56,54 +53,3 @@ class Module(ABC):
 
     def __call__(self, x) -> Tensor:
         return self.forward(x)
-    
-class Linear(Module):
-    def __init__(self, input_dim, output_dim, bias: bool = False) -> None:
-        super().__init__()
-
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.dims = (input_dim, output_dim)
-
-        if output_dim is None:
-            self.dims = (input_dim, )
-        
-        self.w = Tensor(
-            np.random.uniform(-1, 1, size=self.dims) / np.sqrt(np.prod(self.dims)),
-            requires_grad=True,
-        )
-
-        self.init_bias(set_bias = bias)
-
-    def init_bias(self, set_bias: bool):
-        if set_bias:
-            if self.output_dim is None:
-                self.b = Tensor.zeros_like(1, requires_grad=True)
-            else:
-                self.b = Tensor(np.zeros((1, self.output_dim)), requires_grad=True)
-        else:
-            self.b = Tensor(0.0)
-        
-    def forward(self, x) -> Tensor:
-
-        output = x @ self.w + self.b
-
-        return output
-    
-# Testing the Linear Model
-input_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-input_tensor = Tensor(input_data, requires_grad=True)
-
-linear_layer = Linear(input_dim=3, output_dim=2)
-output = linear_layer(input_tensor)
-
-print("Output:", output)
-
-# Check gradients
-print("Input gradient:", input_tensor.grad)
-print("Weight gradient:", linear_layer.w.grad)
-print("Bias gradient:", linear_layer.b.grad if linear_layer.b.requires_grad else None)
-
-# Zero the gradients
-linear_layer.zero_grad()
-input_tensor.zero_grad()
