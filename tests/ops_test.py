@@ -30,7 +30,7 @@ def test_matmul1():
         a = Tensor([[1, 2], [1, 2]], requires_grad=True)
         b = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
 
-        result = matmul(a, b)
+        result = a @ b
         result.backward(gradient=Tensor.ones_like(result))
 
         assert result.tolist() == [[3, 6, 9], [3, 6, 9]]
@@ -49,4 +49,40 @@ def test_div():
     assert math.isclose(a.grad.tolist(), 0.6390, rel_tol=0.01) == True
     assert math.isclose(b.grad.tolist(), -0.0629, rel_tol=0.01) == True
 
-test_div()
+def test_mul():
+    a = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+    b = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+
+    result = mul(a, b)
+    result.backward()
+
+    assert result.tolist() == [[1, 4, 9], [1, 4, 9]]
+    assert result.grad.tolist() == 1.0
+    assert a.grad.tolist() == [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]
+    assert b.grad.tolist() == [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]
+
+def test_add():
+    a = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+    b = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+
+    result = add(a, b)
+    result.backward()
+
+    assert result.tolist() == [[2, 4, 6], [2, 4, 6]]
+    assert result.grad.tolist() == 1.0
+    assert a.grad.tolist() == [[1, 1, 1], [1, 1, 1]]
+    assert b.grad.tolist() == [[1, 1, 1], [1, 1, 1]]
+
+def test_subtract():
+    a = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+    b = Tensor([[1, 2, 3], [1, 2, 3]], requires_grad=True)
+
+    result = subtract(a, b)
+    result.backward()
+
+    assert result.tolist() == [[0, 0, 0], [0, 0, 0]]
+    assert result.grad.tolist() == 1.0
+    assert a.grad.tolist() == [[1, 1, 1], [1, 1, 1]]
+    assert b.grad.tolist() == [[-1, -1, -1], [-1, -1, -1]]
+
+test_subtract()

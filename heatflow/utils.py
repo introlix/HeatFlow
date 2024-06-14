@@ -74,3 +74,14 @@ def reconstruct_nd_array_from_2d_list(flat_list, original_shape):
     new_shape = original_shape[:-2] + (flat_list[0].shape[0], flat_list[0].shape[1])
     flat_array = np.array(flat_list)
     return flat_array.reshape(new_shape)
+
+def to_categorical(x):
+
+    a = x.flatten()
+
+    one_hot = np.zeros((a.size, a.max() + 1))
+    rows = np.arange(a.size)
+
+    one_hot[rows, a] = 1
+
+    return one_hot

@@ -1,6 +1,7 @@
 import heatflow._tensor
 import numpy as np
 import heatflow
+from heatflow import Tensor
 from typing import Tuple
 from heatflow_cpp import matmul_cpp, add_cpp, subtract_cpp, divide_cpp
 from utils import flatten_nd_array_to_2d_list, reconstruct_nd_array_from_2d_list, registerFn
@@ -45,9 +46,21 @@ def manageBroadcasting(
 
 
 @registerFn(heatflow.Tensor, "__mul__")
-def mul(a, b):
+def mul(a, b) -> Tensor:
     """
-    Dot product two multiply two matrix
+    Dot product two multiply two matrix.
+
+    Forward:
+        Compute the matrix multiplication of two tensors:
+            c = a * b
+
+    Backward:
+        For gradient computation:
+            ∂c/∂a = b
+            ∂c/∂b = a
+        Thus:
+            grad_a = grad_c * b
+            grad_b = grad_c * a
     """
     a = heatflow.toTensor(a)
     b = heatflow.toTensor(b)
@@ -69,9 +82,23 @@ def mul(a, b):
 
     return output
 
-@registerFn(heatflow.Tensor, "__matmul__")
-def matmul(a, b):
-    """Return result of matrix multiplication of the inputs"""
+@registerFn(Tensor, "__matmul__")
+def matmul(a, b) -> Tensor:
+    """
+    Return result of matrix multiplication of the inputs
+
+    Forward:
+        Compute the matrix multiplication of two tensors:
+            c = a @ b
+
+    Backward:
+        For gradient computation:
+            ∂c/∂a = b^T
+            ∂c/∂b = a^T
+        Thus:
+            grad_a = grad_c @ b^T
+            grad_b = grad_c @ a^T
+    """
 
     a = heatflow.toTensor(a)
     b = heatflow.toTensor(b)
@@ -112,9 +139,21 @@ def matmul(a, b):
     return output
 
 @registerFn(heatflow.Tensor, "__add__")    
-def add(a, b):
+def add(a, b) -> Tensor:
     """
     Adds two n-dimensional numpy arrays using Eigen's matrix addition.
+
+    Forward:
+        Compute the element wise addition of two tensor:
+            c = a + b
+    
+    Backward:
+        For gradient computation:
+            ∂c/∂a = 1
+            ∂c/∂b = 1
+        Thus:
+            grad_a = grad_c * 1
+            grad_b = grad_c * 1
     """
     a = heatflow.toTensor(a)
     b = heatflow.toTensor(b)
@@ -143,9 +182,21 @@ def add(a, b):
     return output
 
 @registerFn(heatflow.Tensor, "__sub__")
-def subtract(a, b):
+def subtract(a, b) -> Tensor:
     """
     Subtracts two n-dimensional numpy arrays using Eigen's matrix multiplication.
+
+    Forward:
+        Compute the element wise subtraction of two tensor:
+            c = a - b
+    
+    Backward:
+        For gradient computation:
+            ∂c/∂a = 1
+            ∂c/∂b = 1
+        Thus:
+            grad_a = grad_c * 1
+            grad_b = grad_c * -1
     """
 
     a = heatflow.toTensor(a)
@@ -175,9 +226,21 @@ def subtract(a, b):
     return output
 
 @registerFn(heatflow.Tensor, "__truediv__")    
-def divide(a, b):
+def divide(a, b) -> Tensor:
     """
     Divides two n-dimensional numpy arrays using Eigen's matrix multiplication.
+
+    Forward:
+        Compute the element wise subtraction of two tensor:
+            c = a / b
+    
+    Backward:
+        For gradient computation:
+            ∂c/∂a = 1/b
+            ∂c/∂b = -a/b^2
+        Thus:
+            grad_a = grad_c * 1/b
+            grad_b = grad_c * -a/b^2
     """
 
     a = heatflow.toTensor(a)
@@ -215,14 +278,17 @@ def divide(a, b):
     return output
 
 @registerFn(heatflow.Tensor, "__pow__")
-def pow(a, pow):
+def pow(a, pow) -> Tensor:
+    """
+    Calculate the power of a tensor.
+    """
 
     a = heatflow.toTensor(a)
 
     output = heatflow.Tensor(a.data ** (pow), requires_grad=a.requires_grad)
     output.save_for_backward([a])
 
-    def backward_fn():
+    def grad_fn():
 
         if a.requires_grad:
             operation_gradient = pow * (a.data ** (pow - 1))
@@ -231,5 +297,119 @@ def pow(a, pow):
 
             a.grad.data += local_gradient
 
+    output.grad_fn = grad_fn
+    return output
+
+@registerFn(Tensor, "sum")
+def sum(a, axis: int = None):
+
+    a = heatflow.toTensor(a)
+    sum_data = a.data.sum() if axis is None else a.data.sum(axis=axis)
+
+    output = Tensor(data=sum_data, requires_grad=a.requires_grad)
+    output.save_for_backward([a])
+
+    def backward_fn():
+
+        if a.requires_grad:
+            local_gradient = output.grad.data * np.ones_like(a)
+            local_gradient = manageBroadcasting(a.ndim, a.shape, local_gradient)
+            a.grad.data += local_gradient
+
     output.backward_fn = backward_fn
+
+    return output
+
+# functions
+@registerFn(Tensor, "sigmoid")
+def sigmoid(x: Tensor) -> Tensor:
+    output_data = 1.0 / (1.0 + np.exp(-x.data))  # sig(x)
+
+    output = Tensor(output_data, requires_grad=x.requires_grad)
+    output.save_for_backward([x])
+
+    def grad_fn():
+
+        if x.requires_grad:
+
+            sigmoid_grad = output.data * (1 - output.data)  # sig(x) * (1-sig(x))
+            local_gradient = output.grad.data * sigmoid_grad
+
+            x.grad.data += local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+
+@registerFn(Tensor, "tanh")
+def tanh(x: Tensor) -> Tensor:
+
+    tanh_x = np.tanh(x.data)
+
+    output = Tensor(tanh_x, requires_grad=x.requires_grad)
+    output.save_for_backward([x])
+
+    def grad_fn():
+
+        if x.requires_grad:
+
+            local_gradient = output.grad.data * (1 - (tanh_x * tanh_x))
+            x.grad.data += local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+
+@registerFn(Tensor, "relu")
+def relu(x) -> Tensor:
+
+    output = Tensor(np.maximum(x.data, 0), requires_grad=x.requires_grad)
+    output.save_for_backward([x])
+
+    def grad_fn():
+
+        if x.requires_grad:
+
+            local_gradient = (x.data >= 0) * output.grad.data
+            x.grad.data += local_gradient
+
+    output.grad_fn = grad_fn
+
+    return output
+
+
+@registerFn(Tensor, "softmax")
+def softmax(x: Tensor) -> Tensor:
+    """
+    Softmax function suffers from numerical error hence must be stabilized against overflow and underflow.
+
+    softmax(x)_i = exp(x)_i / sum(exp(x))
+
+    When x_i is a large negative number, exp(x_i) will underflow and approximate it to zero.
+    This results in denominator tending to zero -> nan
+
+    """
+
+    ax = x.ndim - 1
+    dim = x.shape[:-1] + (1,)
+
+    x_norm = x.data - x.data.max(axis=ax).reshape(dim)
+    x_exp: np.ndarray = np.exp(x_norm)
+
+    output_data = x_exp / x_exp.sum(axis=ax).reshape(dim)
+
+    output = Tensor(output_data, requires_grad=x.requires_grad)
+    output.save_for_backward([x])
+
+    def grad_fn():
+
+        if x.requires_grad:
+
+            local_gradient = output.grad.data * output_data * (1.0 - output_data)
+            x.grad.data += local_gradient
+
+    output.grad_fn = grad_fn
+
     return output

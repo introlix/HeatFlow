@@ -7,5 +7,5 @@ HeatFlow is a python framework to work with neural networks, tensor, etc. It als
 
 from . import heatflow_cpp
 from heatflow._tensor import Tensor, toTensor
-from heatflow.ops.basics import matmul, add, subtract, divide, mul
+from heatflow.ops.basics import matmul, add, subtract, divide, mul, pow, sigmoid, tanh, relu, softmax
 from heatflow.ops.tensor_ops import zeros, ones, random, eye, sum, mean, max, min, prod, reshape, flatten, expand_dims, squeeze

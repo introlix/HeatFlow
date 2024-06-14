@@ -2,4 +2,5 @@ numpy
 numba
 tqdm
 setuptools
+requests
 -e .
