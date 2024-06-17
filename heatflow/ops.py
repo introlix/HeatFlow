@@ -494,3 +494,104 @@ def imul(a: TensorableType, b: TensorableType) -> Tensor:
 @registerFn(Tensor, "__rtruediv__")
 def rdiv(a: TensorableType, b: TensorableType) -> Tensor:
     return div(b, a)
+
+# Generate functions
+def zeros(*shape) -> Tensor:
+    """
+    Generate a tensor filled with zeros.
+
+    Args:
+        shape (tuple): The shape of the matrix.
+
+    Returns:
+        Tensor: A tensor of the given shape filled with zeros.
+    """
+    return Tensor(np.zeros(shape))
+
+def ones(*shape) -> Tensor:
+    """
+    Generate a tensor filled with ones.
+
+    Args:
+        shape (tuple): The shape of the tensor.
+
+    Returns:
+        Tensor: A tensor of the given shape filled with ones.
+    """
+    return Tensor(np.ones(shape))
+
+def random(*shape) -> Tensor:
+    """
+    Generate a tensor filled with random values.
+
+    Args:
+        shape (tuple): The shape of the tensor.
+
+    Returns:
+        Tensor: A tensor of the given shape filled with random values.
+    """
+
+    return Tensor(np.random.random(shape))
+
+# Todo: some error need to get handled
+def eye(m: int, n: int = None) -> Tensor:
+    """
+    Generate an identity tensor with given shape
+
+    Args:
+        shape: shape for the identity tensor
+
+    Returns:
+        identiy (Tensor)
+    """
+
+    if n == None:
+        n = m
+
+    return Tensor(np.eye(m, n))
+
+# opration to change the tensor
+def flatten(tensor) -> Tensor:
+    """
+    Flatten tensor to 1D
+
+    Args:
+        tensor (Tensor, ndarray): The input tensor
+    Returns:
+        Tensor: A new 1D Tensor
+    """
+
+    if isinstance(tensor, Tensor):
+        tensor = tensor.data
+    return Tensor(tensor.flatten())
+
+def expand_dims(tensor, axis) -> Tensor:
+    """
+    Expand the dimensions of a given tensor by adding a new axis at the specified position.
+
+    Args:
+        tensor (tensor, ndarray): The input tensor.
+        axis (int): The position at which to insert the new axis.
+
+    Returns:
+        Tensor: The matrix with the expanded dimensions.
+    """
+    if isinstance(tensor, Tensor):
+        tensor = tensor.data
+    return Tensor(np.expand_dims(tensor, axis))
+
+def squeeze(tensor, axis=None) -> Tensor:
+    """
+    Remove single-dimensional entries from the shape of a given tensor.
+
+    Args:
+        tensor (np.ndarray): The input tensor.
+        axis (int or tuple of int, optional): Selects a subset of the single-dimensional entries in the shape. 
+                                          If an axis is selected with shape entry greater than one, an error is raised.
+
+    Returns:
+        Tensor: The tensor with single-dimensional entries removed.
+    """
+    if isinstance(tensor, Tensor):
+        tensor = tensor.data
+    return Tensor(np.squeeze(tensor, axis=axis))

@@ -12,30 +12,26 @@ TensorableType = Union[float, np.ndarray, "Tensor"]
 
 class Tensor:
     """
-    `Tensor` is a n-dimensional matrix to store floating-point data and perform gradient computation
+    Stores data for training
 
-    Attributes
-    ----------
-    Arg: data (numpy.ndarray)
-        stores the floating point data as a numpy array
-
-    Arg: ctx (List[Tensor])
-        list of all the operand tensors which resulted to this tensor
-
-    Arg: grad (Tensor)
-        Stores the gradient for the tensor
-
-    Arg: backward_fn (Callable[[], None])
-        reference to the function to calculate the gradient for the operand tensors
-
-    Arg: requires_grad (bool)
-        enforces if gradient needs to be computed for this tensor
-
+    Parameters:
+        data (int, float, list, np.ndarray): The data that will be stored in Tensor or manipulated
+        requires_grad (bool): Whether the Tensor requires gradient to be calculated. By default it is False.
+        grad (np.array): The gradient value of the Tensor. By default it is zero when requires_grad is True else None
+        ctx (List[Tensor]): list of all the operand tensors which resulted to this tensor
+        backward_fn (Callable[[], None]): reference to the function to calculate the gradient for the operand tensors
     """
 
     def __init__(
         self, data: ArrayableType = None, requires_grad: bool = False, dtype=np.float64
     ) -> None:
+        
+        """
+        Args:
+            data (int, float, list, np.ndarray): The data that will be stored in Tensor or manipulated
+            requires_grad (bool): Whether the Tensor requires gradient to be calculated. By default it is False.
+            grad (np.array): The gradient value of the Tensor. By default it is zero when requires_grad is True else None
+        """
 
         self._data = enforceNumpy(data, dtype=dtype)
         self.ctx: List["Tensor"] = []
@@ -146,7 +142,7 @@ class Tensor:
         return Tensor(
             np.random.uniform(low, high, size=size), requires_grad=requires_grad
         )
-
+    
     @staticmethod
     def zeros_like(x: ArrayableType) -> "Tensor":
         if isinstance(x, Tensor):
@@ -193,23 +189,67 @@ class Tensor:
             np.random.randint(low, high, size=size), requires_grad=requires_grad
         )
 
-    @staticmethod
-    def eye(rows: int, columns: int) -> "Tensor":
-        """Returns identity tensor
+    # @staticmethod
+    # def eye(rows: int, columns: int) -> "Tensor":
+    #     """Returns identity tensor
 
-        Parameters
-        ----------
+    #     Parameters
+    #     ----------
 
-        Arg: rows (int)
-            Number of rows in the tensor
+    #     Arg: rows (int)
+    #         Number of rows in the tensor
 
-        Arg: columns (int)
-            Number of columns in the tensor
+    #     Arg: columns (int)
+    #         Number of columns in the tensor
 
-        """
-        return Tensor(np.eye(int(rows), int(columns)))
+    #     """
+    #     return Tensor(np.eye(int(rows), int(columns)))
 
     # Conversion and meta functions
+
+    def reshape(self, *newshape):
+        """
+        Reshape tensor to a new shape.
+
+        Returns:
+            Tensor: A new tensor with new shape
+        """
+        return Tensor(np.reshape(self.data, newshape))
+    
+    def flatten(self):
+        """
+        Flatten tensor to 1D
+
+        Returns:
+            Tensor: A new 1D Tensor
+        """
+        return Tensor(self.data.flatten())
+    
+    def expand_dims(self, axis):
+        """
+        Expand the dimensions of a given tensor by adding a new axis at the specified position.
+
+        Args:
+            axis (int): The position at which to insert the new axis.
+
+        Returns:
+            Tensor: The matrix with the expanded dimensions.
+        """
+        return Tensor(np.expand_dims(self.data, axis))
+
+    # Todo: Some error need to handle
+    def squeeze(self, axis=None):
+        """
+        Remove single-dimensional entries from the shape of a given tensor.
+
+        Args:
+            axis (int or tuple of int, optional): Selects a subset of the single-dimensional entries in the shape. 
+                                            If an axis is selected with shape entry greater than one, an error is raised.
+
+        Returns:
+            Tensor: The tensor with single-dimensional entries removed.
+        """
+        return Tensor(np.squeeze(self.data, axis=axis))
 
     def tolist(self) -> List[float]:
         """Returns tensor as a list"""
