@@ -4,6 +4,8 @@ from typing import Dict
 from heatflow import Tensor
 
 class Module(ABC):
+    """Abstract base class to define neural networks"""
+
     @abstractmethod
     def __init__(self) -> None:
         super().__init__()
@@ -12,7 +14,7 @@ class Module(ABC):
     def forward(self, x: Tensor) -> Tensor:
         """Implement forward pass"""
         raise NotImplementedError("Forward function is not implemented")
-    
+
     def parameters(self) -> Dict[str, Tensor]:
         """Returns all optimizable parameters"""
         params = dict()
@@ -41,7 +43,7 @@ class Module(ABC):
             params[obj_name] = obj
 
         return params
-        
+
     def zero_grad(self) -> None:
         """Zeros out the gradient buffers of all optimizable parameters"""
         params = self.parameters()

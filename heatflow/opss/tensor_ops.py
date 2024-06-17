@@ -1,7 +1,7 @@
-from heatflow._tensor import Tensor
+from heatflow._tensor import Tensors
 import numpy as np
 
-def zeros(*shape) -> Tensor:
+def zeros(*shape) -> Tensors:
     """
     Generate a tensor filled with zeros.
 
@@ -11,10 +11,10 @@ def zeros(*shape) -> Tensor:
     Returns:
         Tensor: A tensor of the given shape filled with zeros.
     """
-    return Tensor(np.zeros(shape))
+    return Tensors(np.zeros(shape))
 
 
-def ones(*shape) -> Tensor:
+def ones(*shape) -> Tensors:
     """
     Generate a tensor filled with ones.
 
@@ -24,9 +24,9 @@ def ones(*shape) -> Tensor:
     Returns:
         Tensor: A tensor of the given shape filled with ones.
     """
-    return Tensor(np.ones(shape))
+    return Tensors(np.ones(shape))
 
-def random(*shape) -> Tensor:
+def random(*shape) -> Tensors:
     """
     Generate a tensor filled with random values.
 
@@ -37,9 +37,9 @@ def random(*shape) -> Tensor:
         Tensor: A tensor of the given shape filled with random values.
     """
 
-    return Tensor(np.random.random(shape))
+    return Tensors(np.random.random(shape))
 
-def eye(m: int, n: int = None) -> Tensor:
+def eye(m: int, n: int = None) -> Tensors:
     """
     Generate an identity tensor with given shape
 
@@ -53,26 +53,26 @@ def eye(m: int, n: int = None) -> Tensor:
     if n == None:
         n = m
 
-    return Tensor(np.eye(m, n))
+    return Tensors(np.eye(m, n))
 
 
-def sum(tensor, axis=None) -> Tensor:
-    """
-    Compute the sum of elements in a tensor along a given axis.
+# def sum(tensor, axis=None) -> Tensor:
+#     """
+#     Compute the sum of elements in a tensor along a given axis.
 
-    Args:
-        tensor (Tensor, ndarray): The input tensor.
-        axis (int, optional): The axis along which to sum. 
-                          If None, sum all the elements.
+#     Args:
+#         tensor (Tensor, ndarray): The input tensor.
+#         axis (int, optional): The axis along which to sum. 
+#                           If None, sum all the elements.
 
-    Returns:
-        Tensor: The sum of elements along the specified axis.
-    """
-    if isinstance(tensor, Tensor):
-        tensor = tensor.data
-    return Tensor(np.sum(tensor, axis=axis))
+#     Returns:
+#         Tensor: The sum of elements along the specified axis.
+#     """
+#     if isinstance(tensor, Tensor):
+#         tensor = tensor.data
+#     return Tensor(np.sum(tensor, axis=axis))
 
-def mean(tensor, axis=None) -> Tensor:
+def mean(tensor, axis=None) -> Tensors:
     """
     Compute the mean of elements in a tensor along a given axis.
 
@@ -84,26 +84,26 @@ def mean(tensor, axis=None) -> Tensor:
     Returns:
         Tensor: The mean of elements along the specified axis.
     """
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(np.mean(tensor, axis=axis))
+    return Tensors(np.mean(tensor, axis=axis))
 
-def max(tensor, axis=None) -> Tensor:
-    """
-    Compute the max value of elements in a tensor along a given axis.
+# def max(tensor, axis=None) -> Tensor:
+#     """
+#     Compute the max value of elements in a tensor along a given axis.
 
-    Args:
-        tensor (Tensor, ndarray): The input tensor.
-        axis (int, optional): The axis along which to calculate max value. 
+#     Args:
+#         tensor (Tensor, ndarray): The input tensor.
+#         axis (int, optional): The axis along which to calculate max value. 
 
-    Returns:
-        Tensor: The max value of elements along the specified axis.
-    """
-    if isinstance(tensor, Tensor):
-        tensor = tensor.data
-    return Tensor(np.max(tensor, axis=axis))
+#     Returns:
+#         Tensor: The max value of elements along the specified axis.
+#     """
+#     if isinstance(tensor, Tensor):
+#         tensor = tensor.data
+#     return Tensor(np.max(tensor, axis=axis))
 
-def min(tensor, axis=None) -> Tensor:
+def min(tensor, axis=None) -> Tensors:
     """
     Compute the min value of elements in a tensor along a given axis.
 
@@ -114,11 +114,11 @@ def min(tensor, axis=None) -> Tensor:
     Returns:
         Tensor: The min value of elements along the specified axis.
     """
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(np.min(tensor, axis=axis))
+    return Tensors(np.min(tensor, axis=axis))
 
-def prod(tensor, axis=None) -> Tensor:
+def prod(tensor, axis=None) -> Tensors:
     """
     Compute the product of elements in a tensor along a given axis.
 
@@ -129,27 +129,27 @@ def prod(tensor, axis=None) -> Tensor:
     Returns:
         Tensor: The product of elements along the specified axis.
     """
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(np.prod(tensor, axis=axis))
+    return Tensors(np.prod(tensor, axis=axis))
 
 
 # Shape Manipulation Functions
 
-def reshape(tensor, newshape) -> Tensor:
-    """
-    Reshape tensor to a new shape.
+# def reshape(tensor, newshape) -> Tensor:
+#     """
+#     Reshape tensor to a new shape.
 
-    Args:
-        tensor (Tensor, ndarray): The input tenosr.
-    Returns:
-        Tensor: A new tensor with new shape
-    """
-    if isinstance(tensor, Tensor):
-        tensor = tensor.data
-    return Tensor(np.reshape(tensor, newshape))
+#     Args:
+#         tensor (Tensor, ndarray): The input tenosr.
+#     Returns:
+#         Tensor: A new tensor with new shape
+#     """
+#     if isinstance(tensor, Tensor):
+#         tensor = tensor.data
+#     return Tensor(np.reshape(tensor, newshape))
 
-def flatten(tensor) -> Tensor:
+def flatten(tensor) -> Tensors:
     """
     Flatten tensor to 1D
 
@@ -159,11 +159,11 @@ def flatten(tensor) -> Tensor:
         Tensor: A new 1D Tensor
     """
 
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(tensor.flatten())
+    return Tensors(tensor.flatten())
 
-def expand_dims(tensor, axis) -> Tensor:
+def expand_dims(tensor, axis) -> Tensors:
     """
     Expand the dimensions of a given tensor by adding a new axis at the specified position.
 
@@ -174,11 +174,11 @@ def expand_dims(tensor, axis) -> Tensor:
     Returns:
         Tensor: The matrix with the expanded dimensions.
     """
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(np.expand_dims(tensor, axis))
+    return Tensors(np.expand_dims(tensor, axis))
 
-def squeeze(tensor, axis=None) -> Tensor:
+def squeeze(tensor, axis=None) -> Tensors:
     """
     Remove single-dimensional entries from the shape of a given tensor.
 
@@ -190,6 +190,6 @@ def squeeze(tensor, axis=None) -> Tensor:
     Returns:
         Tensor: The tensor with single-dimensional entries removed.
     """
-    if isinstance(tensor, Tensor):
+    if isinstance(tensor, Tensors):
         tensor = tensor.data
-    return Tensor(np.squeeze(tensor, axis=axis))
+    return Tensors(np.squeeze(tensor, axis=axis))

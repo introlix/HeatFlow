@@ -6,7 +6,7 @@ import heatflow
 import heatflow.nn as nn
 import heatflow.nn.functional as F
 
-a = heatflow.Tensor([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
+a = heatflow.Tensors([[1, 2, 3], [1, 2, 3], [1, 2, 3]])
 sigmoid_value = F.sigmoid(a)
 relu_value = F.relu(a)
 softmax_value = F.softmax(a)

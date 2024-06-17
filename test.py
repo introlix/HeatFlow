@@ -4,12 +4,12 @@ from typing import Dict
 import numpy as np
 import heatflow
 
-from heatflow import Tensor
+from heatflow import Tensors
 import heatflow.nn as nn
 
 # Testing the Linear Model
 input_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-input_tensor = Tensor(input_data, requires_grad=True)
+input_tensor = Tensors(input_data, requires_grad=True)
 
 linear_layer = nn.Linear(input_dim=3, output_dim=2)
 output = linear_layer(input_tensor)

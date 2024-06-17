@@ -1,8 +1,12 @@
 import numpy as np
-# from ops.basics import add, subtract, divide
-from utils import process_data
+from typing import List, Tuple, Union
 
-class Tensor:
+from .utils import InputError, RequiresGradError
+
+ArrayableType = Union[float, list, np.ndarray]
+TensorableType = Union[float, np.ndarray, "Tensors"]
+
+class Tensors:
     """
     Stores data for training
 
@@ -11,7 +15,7 @@ class Tensor:
         requires_grad (bool): Whether the Tensor requires gradient to be calculated. By default it is False.
         grad (np.array): The gradient value of the Tensor. By default it is zero when requires_grad is True else None
     """
-    def __init__(self, data, requires_grad=False) -> None:
+    def __init__(self, data: ArrayableType = None, requires_grad: bool = False, dtype=np.float64) -> None:
         """
         Args:
             data (int, float, list, np.ndarray): The data that will be stored in Tensor or manipulated
@@ -19,33 +23,34 @@ class Tensor:
             grad (np.array): The gradient value of the Tensor. By default it is zero when requires_grad is True else None
         """
 
-        self.data = np.array(data, dtype=np.float32)
-        self.requires_grad = requires_grad
-        self.grad = Tensor(np.zeros_like(self.data)) if requires_grad == True else None
+        self._data = enforceNumpy(data, dtype=dtype)
+        self.ctx: List["Tensors"] = []
+        self.grad = Tensors(np.zeros_like(self.data)) if requires_grad == True else None
         self.grad_fn = lambda: None
-        self.ctx = []
+        self.requires_grad = requires_grad
 
-    def save_for_backward(self, inputs) -> None:
+    def save_for_backward(self, inputs: List["Tensors"]) -> None:
         """Stores the tensors used to compute `self`"""
         self.ctx += inputs
 
-    def init_gradient(self, gradient):
+    def init_gradient(self, gradient: Union[float, "Tensors"]) -> None:
         """Init the gradient of this tensor"""
-        
+
         if self.data.size != 1 and gradient == 1.0:
             if gradient is None:
                 raise ValueError(
                     "Default backward function can only be computed for scalar values. Pass `gradient` for vector outputs"
                 )
-            
-        self.grad = toTensor(gradient)
 
-    def generate_computational_graph(self):
+        self.grad = enforceTensor(gradient)
+
+    def generate_computational_graph(self) -> List["Tensors"]:
         """Performs topological sorting on the operations"""
 
         gradient_tape = list()
         visited = set()
 
+        # This part of the topological sort is from https://github.com/karpathy/micrograd/blob/master/micrograd/engine.py
         def build_topo(v):
             if v not in visited:
                 visited.add(v)
@@ -54,9 +59,10 @@ class Tensor:
                 gradient_tape.append(v)
 
         build_topo(self)
+
         return gradient_tape
     
-    def backward(self, gradient = 1.0):
+    def backward(self, gradient: Union[float, "Tensors"] = 1.0) -> None:
         """Traverses through the computational graph to compute gradients
 
         Arg:
@@ -65,7 +71,10 @@ class Tensor:
         """
 
         if self.requires_grad is False:
-            raise ValueError("Tensor does not require grad. To compute gradients enable requires_grad")
+            raise RequiresGradError(
+                self,
+                "Tensors does not require grad. Enable requires_grad to compute gradients",
+            )
         
         self.init_gradient(gradient)
         gradient_tape = self.generate_computational_graph()
@@ -73,21 +82,81 @@ class Tensor:
         for v in reversed(gradient_tape):
             v.grad_fn()
     
-    def zero_grad(self):
+    def zero_grad(self) -> None:
         if self.requires_grad is False:
-            raise ValueError("Tensor does not require grad. To compute gradients enable requires_grad")
-        
-        self.grad = Tensor(np.zeros_like(self.data))
-    
-    def set_grad_fn(self, grad_fn):
-        self.grad_fn = grad_fn if self.requires_grad else None
-    
-    def ones_like(x):
-        if isinstance(x, Tensor):
-            return Tensor(np.ones_like(x.data))
+            raise RequiresGradError(
+                self,
+                "Tensors does not require grad. Enable requires_grad to compute gradients",
+            )
+        self.grad = Tensors(np.zeros_like(self.data))
 
-        x = toTensor(x)
-        return Tensor(np.ones_like(x))
+
+    @property
+    def data(self) -> np.ndarray:
+        return self._data
+    
+    @data.setter
+    def data(self, data) -> None:
+        self._data = data
+        self.requires_grad = False
+
+    # def data(self, data):
+    #     '''Sets the data to the Tensor
+
+    #     Args:
+    #         data (int or float or list or np.ndarray): Data to be set
+    
+    #     Raises:
+    #         TypeError: If data is not instance of (int or float or list or np.ndarray)
+    #     '''
+    #     self._data = process_data(data)
+
+    def dot(self, x: TensorableType) -> "Tensors":
+        return self.matmul(x)
+    
+    @staticmethod
+    def uniform(
+        low: int = 0.0,
+        high: int = 1.0,
+        size: Tuple[int] = None,
+        requires_grad: bool = False,
+    ) -> "Tensors":
+        return Tensors(
+            np.random.uniform(low, high, size=size), requires_grad=requires_grad
+        )
+    
+    @staticmethod
+    def zeros_like(x: ArrayableType) -> "Tensors":
+        if isinstance(x, Tensors):
+            return Tensors(np.zeros_like(x.data))
+
+        x = enforceNumpy(x)
+        return Tensors(np.zeros_like(x))
+    
+    
+    @staticmethod
+    def ones_like(x: ArrayableType) -> "Tensors":
+        if isinstance(x, Tensors):
+            return Tensors(np.ones_like(x.data))
+
+        x = enforceNumpy(x)
+        return Tensors(np.ones_like(x))
+    
+    @staticmethod
+    def randn(*dim, requires_grad: bool = False) -> "Tensors":
+        """Returns random floating-point tensor
+        """
+        return Tensors(np.random.randn(*dim), requires_grad=requires_grad)
+    
+    @staticmethod
+    def randint(
+        size: Tuple[int], low: int, high: int = None, requires_grad: bool = False
+    ) -> "Tensors":
+        """Returns random floating-point tensor
+        """
+        return Tensors(
+            np.random.randint(low, high, size=size), requires_grad=requires_grad
+        )
         
     def reshape(self, *newshape):
         """
@@ -96,7 +165,7 @@ class Tensor:
         Returns:
             Tensor: A new tensor with new shape
         """
-        return Tensor(np.reshape(self.data, newshape))
+        return Tensors(np.reshape(self.data, newshape))
     
     def flatten(self):
         """
@@ -105,7 +174,7 @@ class Tensor:
         Returns:
             Tensor: A new 1D Tensor
         """
-        return Tensor(self.data.flatten())
+        return Tensors(self.data.flatten())
     
     def expand_dims(self, axis):
         """
@@ -117,7 +186,7 @@ class Tensor:
         Returns:
             Tensor: The matrix with the expanded dimensions.
         """
-        return Tensor(np.expand_dims(self.data, axis))
+        return Tensors(np.expand_dims(self.data, axis))
 
     def squeeze(self, axis=None):
         """
@@ -130,25 +199,20 @@ class Tensor:
         Returns:
             Tensor: The tensor with single-dimensional entries removed.
         """
-        return Tensor(np.squeeze(self.data, axis=axis))
-        
-    def data(self, data):
-        '''Sets the data to the Tensor
-
-        Args:
-            data (int or float or list or np.ndarray): Data to be set
+        return Tensors(np.squeeze(self.data, axis=axis))
     
-        Raises:
-            TypeError: If data is not instance of (int or float or list or np.ndarray)
-        '''
-        self._data = process_data(data)
 
-    @property    
-    def shape(self):
+    @property
+    def shape(self) -> Tuple:
+        """Returns the shape of the tensor"""
+
+        if self.data.shape == ():
+            return (1,)
         return self.data.shape
     
     @property
-    def ndim(self):
+    def ndim(self) -> int:
+        """Returns the rank of the tensor"""
         return self.data.ndim
     
 
@@ -158,17 +222,41 @@ class Tensor:
     
         
     def __repr__(self):
-        return f'Tensor({self.grad}, requires_grad={self.requires_grad})'
+        return f'Tensor({self.data}, requires_grad={self.requires_grad})'
     
     def __str__(self):
         return f'Tensor({self.data}, requires_grad={self.requires_grad}, shape={self.shape})\n'
     
 
-def toTensor(_input):
+def enforceTensor(_input):
         """
         Converts teh input into tensor.
         """
-        if isinstance(_input, Tensor) is True:
+        if isinstance(_input, Tensors) is True:
             return _input
         else:
-            return Tensor(_input)
+            return Tensors(_input)
+        
+def enforceNumpy(_input: ArrayableType, dtype=np.float64) -> np.ndarray:
+    """Converts the input to numpy array. This is called only during input validation"""
+
+    if _input is None:
+        raise InputError(_input, "No input data provided. Tensor cannot be empty.")
+
+    if not isinstance(_input, np.ndarray):
+        if type(_input) in [
+            list,
+            float,
+            np.float32,
+            np.float64,
+            np.float16,
+            np.float128,
+        ]:
+            return np.array(_input, dtype=dtype)
+        raise InputError(
+            _input, "Tensor only accepts float, list and numpy array as data."
+        )
+
+    _input = _input.astype(dtype)
+
+    return _input

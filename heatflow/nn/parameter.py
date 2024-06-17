@@ -15,7 +15,7 @@ class Parameter(heatflow.Tensor):
         requires_grad (bool): If True, the parameter will be involved in the gradient computation.
     """
     def __init__(self, data, requires_grad=True):
-        if isinstance(data, heatflow.Tensor):
+        if isinstance(data, heatflow.Tensors):
             data = data.data
         super().__init__(data, requires_grad)
 

@@ -2,6 +2,20 @@ import numpy as np
 from numba import jit
 from functools import wraps
 
+class InputError(ValueError):
+    """Custom error that is raised for invalid input to Tensor"""
+
+    def __init__(self, _object: any, message: str) -> None:
+        self.object = _object
+        self.message = message
+        super().__init__(message)
+
+class RequiresGradError(RuntimeError):
+    def __init__(self, _object: any, message: str) -> None:
+        self.object = _object
+        self.message = message
+        super().__init__(message)
+
 @jit(nopython=True)
 def process_data(data):
     """
@@ -39,10 +53,10 @@ def registerFn(cls, fn_name):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
-        
+
         setattr(cls, fn_name, wrapper)
         return func
-    
+
     return decorator
 
 def flatten_nd_array_to_2d_list(array):
@@ -85,3 +99,10 @@ def to_categorical(x):
     one_hot[rows, a] = 1
 
     return one_hot
+
+def underDevelopment(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        raise NotImplementedError("Function still under development")
+
+    return wrapper

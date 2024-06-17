@@ -1,24 +1,40 @@
-class SGD:
-    """
-    Stochastic gradient descent for optimization
+# TODO: Adam, RMSProp
+from collections import defaultdict
 
-    Args:
-        model (Module): model which need to be optimize
-        parameters (dict): dict of all the parameter that need to get optimized, i.e. weight and bias.
-        lr (float): the size of the gradient steps
-        momentum (float): the value of the momentum
+
+class SGD:
+    # TODO: Momentum, mini-batching
     """
-    def __init__(self, parameters: dict, lr: float = 0.001, momentum: float = 0.9) -> None:
+    Runs stochastic gradient descent
+
+    Parameters
+    ----------
+
+    Arg: model (Module)
+        model which needs to be optimized
+
+    Arg: parameters (dict)
+        dict of all the parameters which needs to be optimized in the model
+
+    Arg: lr (float)
+        Learning rate. Size of each gradient step
+    """
+
+    def __init__(
+        self, parameters: dict, lr: float = 0.001, momentum: float = 0.9
+    ) -> None:
         self.params = parameters
-        self.lr = lr
         self.momentum = momentum
+        self.lr = lr
 
         self.momentum_dict = {param: 0.0 for param, _ in self.params.items()}
 
     def step(self) -> None:
         """Updates the parameters of the model"""
+
         for param, weight in self.params.items():
-            v = (self.momentum * self.momentum_dict[param]) + (self.lr * weight.grad.data)
+
+            v = (self.momentum * self.momentum_dict[param]) + (weight.grad * self.lr)
             weight -= v
 
             self.params[param] = weight

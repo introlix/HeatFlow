@@ -12,13 +12,13 @@ def getMNIST() -> Tuple[np.ndarray]:
 
     URLS = [
         (
-            "https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz",
-            "https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz",
+            "https://github.com/introlix/heatflow_datasets/raw/main/MNIST/train-images-idx3-ubyte.gz",
+            "https://github.com/introlix/heatflow_datasets/raw/main/MNIST/train-labels-idx1-ubyte.gz",
             60000,
         ),
         (
-            "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-images-idx3-ubyte.gz",
-            "https://storage.googleapis.com/cvdf-datasets/mnist/t10k-labels-idx1-ubyte.gz",
+            "https://github.com/introlix/heatflow_datasets/raw/main/MNIST/t10k-images-idx3-ubyte.gz",
+            "https://github.com/introlix/heatflow_datasets/raw/main/MNIST/t10k-labels-idx1-ubyte.gz",
             10000,
         ),
     ]
