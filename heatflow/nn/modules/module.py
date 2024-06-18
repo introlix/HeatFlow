@@ -1,7 +1,7 @@
 import inspect
 from abc import ABC, abstractmethod
 from typing import Dict
-from heatflow import Tensor
+from heatflow.tensor import Tensor
 
 class Module(ABC):
     """Abstract base class to define neural networks"""

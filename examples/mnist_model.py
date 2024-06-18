@@ -2,7 +2,7 @@ import numpy as np
 from heatflow.tensor import Tensor
 import heatflow.nn as nn
 import heatflow.nn.functional as F
-from heatflow.optim import SGD
+from heatflow.optim import AdaGrad
 
 from heatflow.tools.datasets import mnist
 
@@ -32,7 +32,7 @@ EPOCHS = 1000
 batch_size = 1000
 lr = 0.01
 
-optimizer = SGD(parameters=model.parameters(), lr=lr, momentum=0.9)
+optimizer = AdaGrad(parameters=model.parameters(), lr=lr)
 
 t_bar = trange(EPOCHS)
 

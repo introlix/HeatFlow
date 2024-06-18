@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/introlix/HeatFlow/blob/main/images/flame_repo.jpeg" width="300"/>
+  <img src="./images/flame_repo.jpeg" width="300"/>
   <h1 align="center">HeatFlow</h1>
 </p>
 

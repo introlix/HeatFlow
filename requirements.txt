@@ -1,6 +1,6 @@
-numpy
-numba
-tqdm
+numpy>=1.19.5
+numba>=0.51.1
+tqdm>=4.55.1
 setuptools
-requests
+requests>=2.26.0
 -e .

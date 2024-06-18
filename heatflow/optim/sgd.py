@@ -1,9 +1,7 @@
-# TODO: Adam, RMSProp
 from collections import defaultdict
 
 
 class SGD:
-    # TODO: Momentum, mini-batching
     """
     Runs stochastic gradient descent
 

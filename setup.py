@@ -13,5 +13,11 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
+    install_requires=[
+        'numpy>=1.19.5',
+        'numba>=0.51.1',
+        'tqdm>=4.55.1',
+        'requests>=2.26.0',
+    ],
     python_requires=">=3.10",
 )
