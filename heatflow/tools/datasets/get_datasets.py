@@ -7,11 +7,8 @@ def parseFileName(url: str) -> str:
     return url.split("/")[-1]
 
 def parseDataset(f_path: str, size: int):
-
     reader = gzip.open(f_path, "rb")
-    reader.read(
-        16
-    )  # first 16 bits contains the magic number and the dimension of the images
+    reader.read(16)  # first 16 bits contains the magic number and the dimension of the images
 
     data_buffer = reader.read((28 * 28 * int(size)))
 
@@ -20,9 +17,7 @@ def parseDataset(f_path: str, size: int):
 
     return data
 
-
 def parseLabels(f_path: str, size: int):
-
     reader = gzip.open(f_path, "rb")
     reader.read(8)
     labels = []
@@ -44,13 +39,15 @@ def getData(url: str, data_type: str, size: int):
         "images" or "labels"
     Arg: size (int)
         size of the dataset to read
-
     """
 
-    f_path = parseFileName(url)
+    # Ensure the 'data' directory exists
+    if not os.path.exists('data'):
+        os.makedirs('data')
+
+    f_path = os.path.join('data', parseFileName(url))
 
     if not os.path.exists(f_path):
-
         response = requests.get(url)
 
         with open(f_path, "wb") as file:
@@ -58,7 +55,6 @@ def getData(url: str, data_type: str, size: int):
 
     if data_type == "images":
         data = parseDataset(f_path, size=size)
-
     elif data_type == "labels":
         data = parseLabels(f_path, size=size)
 

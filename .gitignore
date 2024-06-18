@@ -31,6 +31,7 @@ build/
 eigen-3.4.0/
 eigen/
 pybind11
+data/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
