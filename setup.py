@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="heatflow",
-    version="0.0.1",
+    version="0.0.2",
     author="Satyam Mishra",
     author_email="tubex998@gmail.com",
     description="HeatFlow is a python framework to work with neural networks, tensor, etc.",
